@@ -414,7 +414,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-Built with [Groq's LLaMA 3.3 70B](https://groq.com) · Terminal UI by [Rich](https://rich.readthedocs.io/) · ASCII art via [pyfiglet](https://github.com/pwaller/pyfiglet)
+Built with [Groq's LLaMA 3.3 70B](https://groq.com) · Terminal UI by [Rich](https://rich.readthedocs.io/) · This Project was Vibecoded, Read credits.md.
 
 ---
 
