@@ -50,6 +50,29 @@ Pacify & Defy is a sophisticated CLI-based AI assistant that operates in two dis
 
 ## Quick Start
 
+## Quick Installation
+
+### Linux / Mac / WSL
+
+```bash
+git clone https://github.com/LoneMagma/Pacify-DefyAI.git && cd Pacify_DefyAI && chmod +x setup.sh && ./setup.sh
+```
+
+### Windows (Command Prompt)
+
+```cmd
+git clone https://github.com/LoneMagma/Pacify-DefyAI.git && cd Pacify_DefyAI && setup.ps1
+```
+
+### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/LoneMagma/Pacify-DefyAI.git; cd Pacify_DefyAI; .\setup.ps1
+```
+
+**Note**: You'll need a free Groq API key from [console.groq.com/keys](https://console.groq.com/keys)
+
+
 ### Installation
 
 ```bash
