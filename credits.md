@@ -48,7 +48,7 @@ This isn't a typical AI wrapper. It's an **AI persona framework** with:
 
 ## Development Credits
 
-**Human Architect:** [Your Name/Handle]
+**Human Architect:** [LoneMagma]
 - Conceptual design and architecture
 - System prompt engineering
 - Debugging and refinement
@@ -78,11 +78,7 @@ This isn't a typical AI wrapper. It's an **AI persona framework** with:
 - **SQLite** - User data and memory storage
 - **bcrypt** - Password hashing
 - **Rich** - CLI rendering
-
-### Frontend
-- **Gradio 6.0** - Web interface
-- **Custom CSS** - Glassmorphic design
-
+- 
 ### Architecture
 - **Factory pattern** - Brain instantiation
 - **Singleton pattern** - Rate limiting, API pooling
