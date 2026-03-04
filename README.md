@@ -346,7 +346,7 @@ Built with Groq’s LLaMA 3.3 70B · Terminal UI by Rich · vibecoded (credits i
 
 <div align="center">
 
-**Version 1.0.0** · *Last Updated: January 2026*
+**Version 2.0.0** · *Last Updated: January 2026*
 
 <a href="https://github.com/LoneMagma/Pacify-DefyAI/issues">Report Bug</a> ·
 <a href="https://github.com/LoneMagma/Pacify-DefyAI/issues">Request Feature</a> ·
