@@ -1,7 +1,3 @@
----
-title: Pacify & Defy
----
-
 # Pacify & Defy
 
 <div align="center">
