@@ -360,24 +360,3 @@ built by <a href="https://github.com/LoneMagma">LoneMagma</a> • choose peace o
 
 ---
 
-## How to add your own animated hero later (GIF)
-
-1) Create an `assets/` folder in the repo root (if it doesn’t exist):
-```bash
-mkdir assets
-```
-
-2) Drop your files:
-- `assets/pacify-defy-title.gif` (logo/title animation)
-- `assets/banner.gif` (wide banner vibe strip)
-
-3) At the top of this README:
-- Uncomment the “Option B” `<img src="assets/pacify-defy-title.gif" .../>`
-- Optionally remove the typing SVG line
-
-4) Keep files GitHub-friendly:
-- Aim for **< 5–8 MB** per GIF
-- Title width ~**900–1200px**
-- Banner width ~**1200–1600px**
-
-That’s it — commit + push, and GitHub will render them automatically.
