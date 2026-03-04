@@ -1,5 +1,6 @@
 """
-Pacify & Defy - Core Configuration System v-1.0.0
+Pacify & Defy - Core Configuration System v-2.0.0
+Supports Groq Cloud and local LLM backends (Ollama, LM Studio, llama.cpp).
 """
 
 import os
@@ -25,113 +26,183 @@ TESTS_DIR = BASE_DIR / "tests"
 for directory in [DATA_DIR, LOGS_DIR, EXPORTS_DIR, PERSONAS_DIR]:
     directory.mkdir(exist_ok=True)
 
-# Database and session files
+# Database files
 DB_PATH = DATA_DIR / "pacificia.db"
 SESSION_STATE_PATH = DATA_DIR / "session_state.json"
 
 # ============================================================================
-# API CONFIGURATION
+# BACKEND SELECTION: GROQ CLOUD vs LOCAL LLM
 # ============================================================================
 
-# Groq API (Used for both modes currently)
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# Set LOCAL_LLM=true in .env to use a local server (Ollama, LM Studio, etc.)
+USE_LOCAL_LLM = os.getenv("LOCAL_LLM", "false").lower() in ("true", "1", "yes")
 
-# Validate API key on import
-if not GROQ_API_KEY or GROQ_API_KEY.strip() == "":
-    import sys
-    print("=" * 70)
-    print("ERROR: GROQ_API_KEY not found or empty in .env file")
-    print("=" * 70)
-    print()
-    print("Please create a .env file with your Groq API key:")
-    print("  GROQ_API_KEY=gsk_your_key_here")
-    print()
-    print("Get your key from: https://console.groq.com/keys")
-    print("=" * 70)
-    sys.exit(1)
-elif not GROQ_API_KEY.startswith("gsk_"):
-    print("=" * 70)
-    print("WARNING: API key doesn't start with 'gsk_' - may be invalid")
-    print(f"Current key starts with: {GROQ_API_KEY[:10]}")
-    print("=" * 70)
-
+# --- Groq Cloud ---
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# Models
-PACIFY_MODEL = "llama-3.3-70b-versatile"
-DEFY_MODEL = "llama-3.3-70b-versatile"
+# --- Local LLM Server ---
+# Defaults to Ollama's OpenAI-compatible endpoint
+LOCAL_LLM_URL = os.getenv(
+    "LOCAL_LLM_URL", "http://localhost:11434/v1/chat/completions"
+)
+LOCAL_LLM_KEY = os.getenv("LOCAL_LLM_KEY", "ollama")  # most local servers ignore this
 
-# Headers
+# ---- Active endpoint (resolved at startup) ----
+API_URL = LOCAL_LLM_URL if USE_LOCAL_LLM else GROQ_API_URL
+API_KEY  = LOCAL_LLM_KEY if USE_LOCAL_LLM else GROQ_API_KEY
+
+# Validate cloud key only when using Groq
+if not USE_LOCAL_LLM:
+    if not GROQ_API_KEY or GROQ_API_KEY.strip() == "":
+        import sys
+        print("=" * 70)
+        print("ERROR: GROQ_API_KEY not found or empty in .env file")
+        print("=" * 70)
+        print()
+        print("Options:")
+        print("  1. Cloud (Groq):  Add GROQ_API_KEY=gsk_... to your .env")
+        print("  2. Local LLM:     Add LOCAL_LLM=true to your .env")
+        print()
+        print("Get a free Groq key: https://console.groq.com/keys")
+        print("=" * 70)
+        sys.exit(1)
+    elif not GROQ_API_KEY.startswith("gsk_"):
+        print("[WARNING] API key doesn't start with 'gsk_' — may be invalid")
+
+# Legacy alias (used by some internal code)
 GROQ_HEADERS = {
-    "Authorization": f"Bearer {GROQ_API_KEY}",
-    "Content-Type": "application/json"
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json",
 }
 
-# API Limits & Retry
-API_TIMEOUT = 30  # seconds
+# ============================================================================
+# MODELS — per-mode and per-persona overrides
+# ============================================================================
+
+# Default models
+if USE_LOCAL_LLM:
+    # Override via LOCAL_PACIFY_MODEL / LOCAL_DEFY_MODEL in .env
+    PACIFY_MODEL = os.getenv("LOCAL_PACIFY_MODEL", os.getenv("LOCAL_LLM_MODEL", "llama3.2:3b"))
+    DEFY_MODEL   = os.getenv("LOCAL_DEFY_MODEL",   os.getenv("LOCAL_LLM_MODEL", "dolphin-mistral"))
+else:
+    PACIFY_MODEL = os.getenv("PACIFY_MODEL", "llama-3.3-70b-versatile")
+    DEFY_MODEL   = os.getenv("DEFY_MODEL",   "llama-3.3-70b-versatile")
+
+# Per-persona model overrides (optional, falls back to mode default)
+# Example .env: PERSONA_MODEL_REBEL=nous-hermes2:7b
+PERSONA_MODEL_OVERRIDES = {
+    "pacificia": os.getenv("PERSONA_MODEL_PACIFICIA", ""),
+    "sage":      os.getenv("PERSONA_MODEL_SAGE",      ""),
+    "void":      os.getenv("PERSONA_MODEL_VOID",      ""),
+    "rebel":     os.getenv("PERSONA_MODEL_REBEL",     ""),
+}
+# Remove empty overrides
+PERSONA_MODEL_OVERRIDES = {k: v for k, v in PERSONA_MODEL_OVERRIDES.items() if v}
+
+
+def get_model_for_persona(mode: str, persona_name: str) -> str:
+    """Resolve the model to use, respecting persona overrides."""
+    if persona_name in PERSONA_MODEL_OVERRIDES:
+        return PERSONA_MODEL_OVERRIDES[persona_name]
+    return PACIFY_MODEL if mode == "pacify" else DEFY_MODEL
+
+
+# ============================================================================
+# API LIMITS & RETRY
+# ============================================================================
+
+API_TIMEOUT = int(os.getenv("API_TIMEOUT", "45"))  # seconds (raised from 30)
 MAX_RETRIES = 2
-RETRY_DELAY = 2  # seconds
-RATE_LIMIT_PER_MINUTE = 30  # Groq free tier
+RETRY_DELAY = 2   # seconds
+RATE_LIMIT_PER_MINUTE = 28 if not USE_LOCAL_LLM else 9999  # local has no rate limit
 
 # ============================================================================
-# RESPONSE GENERATION - FLUID LIMITS
+# RESPONSE GENERATION — SANE TOKEN LIMITS
 # ============================================================================
 
-# Token allocation (guidelines, not hard limits)
-TOKEN_GUIDELINES = {
-    "quick": 40,        # Short answers (1-2 sentences)
-    "normal": 100,      # Standard conversation (2-4 sentences)
-    "detailed": 350,    # In-depth responses (4-6 sentences)
-    "technical": 800,  # Increased for complete code examples   # Code/technical content (Sage/Rebel)
+# FIXED: Previous limits were absurdly low (100 tokens = ~75 words, cuts mid-sentence)
+TOKEN_LIMITS = {
+    "quick":     300,    # ~225 words  — short, precise answer
+    "normal":    600,    # ~450 words  — standard conversation
+    "detailed":  1200,   # ~900 words  — thorough explanation
+    "technical": 2000,   # ~1500 words — code + explanation
 }
 
-# Word count targets (soft targets for quality, not truncation points)
+# Word count targets (soft quality targets, not truncation points)
 WORD_COUNT_TARGETS = {
-    "quick": 40,        # ~1-2 sentences
-    "normal": 80,       # ~2-4 sentences (default)
-    "detailed": 140,    # ~4-6 sentences
-    "technical": 200,   # Code explanations
+    "quick":     80,
+    "normal":    150,
+    "detailed":  300,
+    "technical": 500,
 }
 
-# Temperature settings (creativity control)
+# Temperature settings
 TEMPERATURE_DEFAULTS = {
-    "pacify": 0.60,     # Balanced, consistent
-    "defy": 0.80,       # Slightly more creative
+    "pacify": 0.60,
+    "defy":   0.80,
 }
 
-# Temperature range for /set temperature
 TEMPERATURE_MIN = 0.1
 TEMPERATURE_MAX = 1.0
+
+# ============================================================================
+# CONTEXT WINDOW & TOKEN BUDGETING
+# ============================================================================
+
+# How many past exchanges to include in context by default
+DEFAULT_CONTEXT_LIMIT = 6
+MIN_CONTEXT_LIMIT = 1
+MAX_CONTEXT_LIMIT = 15
+
+# Rough token estimator: chars / 4 is a good heuristic for English text
+CHARS_PER_TOKEN = 4
+
+# Max tokens to spend on context history before trimming
+# (leaves room for system prompt + response in the model's context window)
+MAX_CONTEXT_TOKENS = 3000
 
 # ============================================================================
 # PERSONAS & MODES
 # ============================================================================
 
-# Available personas
 PACIFY_PERSONAS = ["pacificia", "sage"]
-DEFY_PERSONAS = ["void", "rebel"]
+DEFY_PERSONAS   = ["void", "rebel"]
 
-# Defaults
-DEFAULT_MODE = "pacify"
+DEFAULT_MODE           = "pacify"
 DEFAULT_PACIFY_PERSONA = "pacificia"
-DEFAULT_DEFY_PERSONA = "void"
+DEFAULT_DEFY_PERSONA   = "void"
 
-# Persona file helper
+
 def get_persona_path(mode: str, persona_name: str) -> Path:
     """Get path to persona JSON file."""
     return PERSONAS_DIR / mode / f"{persona_name}.json"
 
-# Mode warning message
+
+def discover_personas(mode: str):
+    """Dynamically discover persona JSON files for a mode."""
+    mode_dir = PERSONAS_DIR / mode
+    if not mode_dir.exists():
+        return []
+    return [p.stem for p in mode_dir.glob("*.json")]
+
+
+# Refresh persona lists dynamically (falls back to hardcoded if dir empty)
+_discovered_pacify = discover_personas("pacify")
+_discovered_defy   = discover_personas("defy")
+if _discovered_pacify:
+    PACIFY_PERSONAS = _discovered_pacify
+if _discovered_defy:
+    DEFY_PERSONAS = _discovered_defy
+
 DEFY_WARNING = """
 ⚠️  DEFY MODE ACTIVATED ⚠️
 
-This mode has NO content restrictions.
-- Uncensored responses
-- No refusal training
-- Technical freedom
-- Controversial topics allowed
-
-The AI will follow your lead without moral lectures.
+This mode operates with direct, unfiltered responses.
+- No safety theater or moral lectures
+- Technical topics discussed freely
+- Controversial opinions expressed directly
+- Responses follow your lead
 
 Type 'yes' to confirm or anything else to cancel.
 """
@@ -140,99 +211,113 @@ Type 'yes' to confirm or anything else to cancel.
 # MOOD SYSTEM (PACIFICIA ONLY)
 # ============================================================================
 
-# Moods are ONLY for Pacificia persona
 MOOD_ENABLED_PERSONAS = ["pacificia"]
 
 AVAILABLE_MOODS = [
-    "witty",
-    "sarcastic",
-    "philosophical",
-    "empathetic",
-    "cheeky",
-    "poetic",
-    "inspired",
-    "melancholic",
+    "witty", "sarcastic", "philosophical", "empathetic",
+    "cheeky", "poetic", "inspired", "melancholic",
 ]
 
 DEFAULT_MOOD = "witty"
 
-# Mood detection keywords (auto-detect for Pacificia)
 MOOD_KEYWORDS = {
-    "witty": ["joke", "funny", "what is", "tell me"],
-    "sarcastic": ["really", "seriously", "sure", "obviously"],
-    "poetic": ["beautiful", "describe", "poem", "write"],
-    "empathetic": ["sad", "tough", "feel", "emotion", "hurt", "miss"],
+    "witty":         ["joke", "funny", "what is", "tell me"],
+    "sarcastic":     ["really", "seriously", "sure", "obviously"],
+    "poetic":        ["beautiful", "describe", "poem", "write"],
+    "empathetic":    ["sad", "tough", "feel", "emotion", "hurt", "miss"],
     "philosophical": ["why", "meaning", "purpose", "life", "death", "existence"],
-    "cheeky": ["tease", "fun", "play", "haha", "lol"],
-    "inspired": ["awesome", "inspire", "dream", "create", "amazing"],
-    "melancholic": ["loss", "gone", "fade", "remember"],
+    "cheeky":        ["tease", "fun", "play", "haha", "lol"],
+    "inspired":      ["awesome", "inspire", "dream", "create", "amazing"],
+    "melancholic":   ["loss", "gone", "fade", "remember"],
 }
 
 # ============================================================================
-# MEMORY & CONTEXT
+# MEMORY & PERSISTENCE
 # ============================================================================
 
-# Context window (number of previous exchanges to include)
-DEFAULT_CONTEXT_LIMIT = 5
-MIN_CONTEXT_LIMIT = 1
-MAX_CONTEXT_LIMIT = 10
-
-# Memory retention
-MEMORY_RETENTION_DAYS = 30
+MEMORY_RETENTION_DAYS    = 30
 EMOTIONAL_TRACKING_HOURS = 24
+OPINION_CONFIDENCE_THRESHOLD = 0.65  # Lowered from 0.8 — makes opinions more discoverable
 
-# Opinion tracking
-OPINION_CONFIDENCE_THRESHOLD = 0.8
-
-# ============================================================================
-# SESSION STATE & PERSISTENCE
-# ============================================================================
-
-# What to persist across sessions
 SESSION_STATE_FIELDS = [
-    "last_mode",
-    "last_persona", 
-    "last_mood",
-    "mode_switches",
-    "last_session_timestamp",
+    "last_mode", "last_persona", "last_mood",
+    "mode_switches", "last_session_timestamp",
 ]
 
-# Greeting logic thresholds
-MODE_SWITCH_THRESHOLD_LOW = 3   # 40% chance of witty comment
-MODE_SWITCH_THRESHOLD_HIGH = 5  # 60% chance of witty comment
-GREETING_RANDOMNESS = 0.15      # 15% base variation
-
 # ============================================================================
-# CONTEXTUAL AWARENESS
+# SENTIMENT ANALYSIS
 # ============================================================================
 
-# Time context keywords (when to inject time/date)
+# Fallback keyword lists used if vaderSentiment is unavailable
+POSITIVE_KEYWORDS = [
+    "great", "awesome", "happy", "excited", "love", "good",
+    "fantastic", "yay", "glad", "grateful", "thank", "amazing",
+    "wonderful", "excellent", "brilliant", "joy", "laugh",
+]
+
+NEGATIVE_KEYWORDS = [
+    "sad", "bad", "terrible", "hate", "awful", "depressed",
+    "loss", "die", "death", "hurt", "pain", "suffer",
+    "angry", "frustrated", "annoyed", "upset",
+]
+
+EMOTIONAL_KEYWORDS = [
+    "feel", "felt", "emotion", "heart", "soul",
+    "companion", "friend", "connection", "care", "worry",
+]
+
+# Whether VADER is available (checked at runtime in memory.py)
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+    VADER_AVAILABLE = True
+except ImportError:
+    VADER_AVAILABLE = False
+
+# ============================================================================
+# OPINION EXTRACTION PATTERNS
+# ============================================================================
+
+# Phrases that signal the user is expressing or forming an opinion
+OPINION_SIGNAL_PHRASES = [
+    "i think", "i believe", "i feel", "in my opinion", "i prefer",
+    "i love", "i hate", "i like", "i dislike", "i find",
+    "personally", "for me", "my take", "my view",
+]
+
+# Topics that are worth tracking as opinions
+OPINION_TOPIC_KEYWORDS = {
+    "programming languages": ["python", "javascript", "rust", "go", "java", "typescript"],
+    "editors": ["vim", "vscode", "emacs", "neovim", "sublime"],
+    "frameworks": ["react", "vue", "angular", "fastapi", "django", "flask"],
+    "ai tools": ["chatgpt", "claude", "gemini", "copilot", "cursor"],
+    "work style": ["remote", "office", "wfh", "freelance", "startup"],
+}
+
+# ============================================================================
+# CONTEXTUAL DETECTION
+# ============================================================================
+
 TIME_CONTEXT_KEYWORDS = [
     "time", "date", "today", "now", "when", "day",
     "morning", "afternoon", "evening", "night",
-    "late", "early", "weekend", "weekday", "hour"
+    "late", "early", "weekend", "weekday", "hour",
 ]
 
-# Playfulness indicators
 PLAYFUL_SIGNALS = [
     "lol", "lmao", "haha", "kidding", "jk", "😂",
-    "behind me", "watching", "joking", "messing with"
+    "behind me", "watching", "joking", "messing with",
 ]
 
-# Strict instruction indicators (follow exactly, no elaboration)
 STRICT_INDICATORS = [
     "only", "just", "exactly", "no extra", "no comments",
-    "literally just", "nothing else", "purely", "simply"
+    "literally just", "nothing else", "purely", "simply",
 ]
 
-# Topic shift signals (clear context)
 TOPIC_SHIFT_SIGNALS = [
     "anyway", "moving on", "let's talk about", "new topic",
-    "forget that", "different subject", "changing topics"
+    "forget that", "different subject", "changing topics",
 ]
 
-
-# Code detection indicators
 CODE_INDICATORS = [
     'def ', 'class ', 'function ', 'const ', 'let ', 'var ',
     'import ', 'from ', '#include', 'package ', 'fn ',
@@ -240,47 +325,24 @@ CODE_INDICATORS = [
     'public ', 'private ', 'protected ', 'static ',
 ]
 
-# Task confirmation keywords (for Sage)
 TASK_CONFIRMATIONS = [
     "yes", "yeah", "yep", "sure", "ok", "okay",
     "do it", "go ahead", "create it", "make it",
     "build it", "generate it", "write it",
-    "all of that", "include that", "add that"
-]
-
-# ============================================================================
-# SENTIMENT ANALYSIS (LOCAL)
-# ============================================================================
-
-POSITIVE_KEYWORDS = [
-    "great", "awesome", "happy", "excited", "love", "good",
-    "fantastic", "yay", "glad", "grateful", "thank", "amazing",
-    "wonderful", "excellent", "brilliant", "joy", "laugh"
-]
-
-NEGATIVE_KEYWORDS = [
-    "sad", "bad", "terrible", "hate", "awful", "depressed",
-    "loss", "die", "death", "hurt", "pain", "suffer",
-    "angry", "frustrated", "annoyed", "upset"
-]
-
-EMOTIONAL_KEYWORDS = [
-    "feel", "felt", "emotion", "heart", "soul",
-    "companion", "friend", "connection", "care", "worry"
+    "all of that", "include that", "add that",
 ]
 
 # ============================================================================
 # ASCII ART FONTS
 # ============================================================================
 
-# Font assignments
 FONTS = {
-    "pacify_mode": "slant",        # Mode banner
-    "defy_mode": "slant",          # Mode banner
-    "pacificia": "small",          # Persona
-    "sage": "small",               # Persona
-    "void": "graffiti",            # Persona
-    "rebel": "graffiti",           # Persona
+    "pacify_mode": "slant",
+    "defy_mode":   "slant",
+    "pacificia":   "small",
+    "sage":        "small",
+    "void":        "graffiti",
+    "rebel":       "graffiti",
 }
 
 # ============================================================================
@@ -319,74 +381,73 @@ GREETINGS = {
 # TERMINAL SHORTCUTS
 # ============================================================================
 
-# Keyboard shortcuts supported
 SHORTCUTS = {
-    "ctrl_c": "Interrupt (show exit message)",
-    "ctrl_d": "EOF exit",
-    "ctrl_l": "Clear screen",
-    "ctrl_u": "Clear line from cursor to start",
-    "ctrl_k": "Kill line from cursor to end",
-    "alt_backspace": "Delete word backward",
-    "arrow_up": "Previous command",
-    "arrow_down": "Next command",
-    "double_bang": "Repeat last command (!!)",
+    "ctrl_c":        "Interrupt (show exit message)",
+    "ctrl_d":        "EOF exit",
+    "ctrl_l":        "Clear screen",
+    "arrow_up":      "Previous command",
+    "arrow_down":    "Next command",
+    "double_bang":   "Repeat last command (!!)",
 }
 
-# Command history size
-COMMAND_HISTORY_SIZE = 50
+COMMAND_HISTORY_SIZE = 100  # Raised from 50
 
 # ============================================================================
 # SETTINGS OPTIONS
 # ============================================================================
 
-# Available settings that can be adjusted via /set
 ADJUSTABLE_SETTINGS = {
-    "length": ["quick", "normal", "detailed"],
-    "context": list(range(MIN_CONTEXT_LIMIT, MAX_CONTEXT_LIMIT + 1)),
-    "metadata": ["on", "off"],
-    "timestamps": ["on", "off"],
-    "autosave": ["on", "off"],
+    "length":      ["quick", "normal", "detailed"],
+    "context":     list(range(MIN_CONTEXT_LIMIT, MAX_CONTEXT_LIMIT + 1)),
+    "metadata":    ["on", "off"],
+    "timestamps":  ["on", "off"],
+    "autosave":    ["on", "off"],
     "temperature": f"{TEMPERATURE_MIN}-{TEMPERATURE_MAX}",
 }
 
-# Default settings
 DEFAULT_SETTINGS = {
-    "length": "normal",
-    "context": DEFAULT_CONTEXT_LIMIT,
-    "metadata": "on",
-    "timestamps": "off",
-    "autosave": "off",
-    "temperature": None,  # Uses mode default
+    "length":      "normal",
+    "context":     DEFAULT_CONTEXT_LIMIT,
+    "metadata":    "on",
+    "timestamps":  "off",
+    "autosave":    "off",
+    "temperature": None,
 }
 
 # ============================================================================
 # ERROR TRACKING
 # ============================================================================
 
-# Session error tracking
-MAX_SESSION_ERRORS = 5  # Keep last 5 errors in memory
+MAX_SESSION_ERRORS = 10  # Raised from 5
 
-# Error types
 ERROR_TYPES = {
-    "api_timeout": "API request timed out",
-    "rate_limit": "Rate limit exceeded",
-    "network": "Network connection error",
+    "api_timeout":     "API request timed out",
+    "rate_limit":      "Rate limit exceeded",
+    "network":         "Network connection error",
     "invalid_response": "Invalid API response",
-    "auth_failed": "Authentication failed",
+    "auth_failed":     "Authentication failed",
 }
+
+# ============================================================================
+# GREETING LOGIC THRESHOLDS
+# ============================================================================
+
+MODE_SWITCH_THRESHOLD_LOW  = 3
+MODE_SWITCH_THRESHOLD_HIGH = 5
+GREETING_RANDOMNESS        = 0.15
 
 # ============================================================================
 # LOGGING
 # ============================================================================
 
-LOG_LEVEL = "INFO"
-LOG_FILE = LOGS_DIR / "pacify_defy.log"
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FILE   = LOGS_DIR / "pacify_defy.log"
 
 LOG_CONFIG = {
-    "api_calls": True,
+    "api_calls":    True,
     "mode_switches": True,
-    "errors": True,
-    "stats": False,
+    "errors":       True,
+    "stats":        False,
 }
 
 # ============================================================================
@@ -394,140 +455,122 @@ LOG_CONFIG = {
 # ============================================================================
 
 FEATURES = {
-    "emotional_tracking": True,
-    "mood_detection": True,
+    "emotional_tracking":   True,
+    "mood_detection":       True,
     "cross_session_memory": True,
-    "context_awareness": True,
-    "strict_mode": True,
-    "preference_learning": True,
-    "session_persistence": True,
-    "error_tracking": True,
+    "context_awareness":    True,
+    "strict_mode":          True,
+    "preference_learning":  True,
+    "session_persistence":  True,
+    "error_tracking":       True,
+    "opinion_tracking":     True,   # Now wired up
+    "local_llm":            USE_LOCAL_LLM,
+    "vader_sentiment":      VADER_AVAILABLE,
+    "token_budgeting":      True,
 }
-
-# ============================================================================
-# VALIDATION
-# ============================================================================
-
-def validate_config() -> tuple[bool, list[str]]:
-    """
-    Validate configuration on startup.
-    
-    Returns:
-        (is_valid, list_of_errors)
-    """
-    errors = []
-    
-    # Check API key
-    if not GROQ_API_KEY:
-        errors.append("GROQ_API_KEY not found in .env file")
-    
-    # Check directories
-    required_dirs = [DATA_DIR, LOGS_DIR, PERSONAS_DIR, EXPORTS_DIR]
-    for dir_path in required_dirs:
-        if not dir_path.exists():
-            errors.append(f"Required directory missing: {dir_path}")
-    
-    # Check persona directories
-    for mode in ["pacify", "defy"]:
-        mode_dir = PERSONAS_DIR / mode
-        if not mode_dir.exists():
-            errors.append(f"Persona directory missing: {mode_dir}")
-    
-    return (len(errors) == 0, errors)
 
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 
-def get_token_limit(query_length: int, persona_name: str = None, length_setting: str = "normal") -> int:
+def get_token_limit(
+    query_length: int,
+    persona_name: str = None,
+    length_setting: str = "normal",
+) -> int:
     """
     Determine token limit based on query, persona, and user settings.
-    
-    Args:
-        query_length: Length of user input in characters
-        persona_name: Persona name (Sage/Rebel get more tokens)
-        length_setting: User's length preference from /set length
-    
-    Returns:
-        Token limit for API call
+    FIXED: Sage/Rebel now respect length_setting instead of always returning technical limit.
+    Technical limit is only used when query is code-heavy or no length preference is set.
     """
-    # Technical personas get more tokens
-    if persona_name in ["rebel", "sage"]:
-        return TOKEN_GUIDELINES["technical"]
-    
-    # Use length setting if specified
-    if length_setting in TOKEN_GUIDELINES:
-        return TOKEN_GUIDELINES[length_setting]
-    
-    # Otherwise, infer from query length
+    # If user has explicitly set a length, always respect it
+    if length_setting and length_setting in TOKEN_LIMITS:
+        base = TOKEN_LIMITS[length_setting]
+        # Technical personas get a 50% bonus on top of user preference (not forced override)
+        if persona_name in ("rebel", "sage"):
+            return min(int(base * 1.5), TOKEN_LIMITS["technical"])
+        return base
+
+    # Fallback: infer from query length
     if query_length < 50:
-        return TOKEN_GUIDELINES["quick"]
+        return TOKEN_LIMITS["quick"]
     elif query_length < 150:
-        return TOKEN_GUIDELINES["normal"]
+        return TOKEN_LIMITS["normal"]
+    elif query_length < 400:
+        return TOKEN_LIMITS["detailed"]
     else:
-        return TOKEN_GUIDELINES["detailed"]
+        return TOKEN_LIMITS["technical"]
+
+
+def get_word_count_target(length_setting: str = "normal") -> int:
+    return WORD_COUNT_TARGETS.get(length_setting, WORD_COUNT_TARGETS["normal"])
 
 
 def is_question(text: str) -> bool:
-    """
-    Detect if user input is a question.
-    
-    Args:
-        text: User input
-    
-    Returns:
-        True if question detected
-    """
     if "?" in text:
         return True
-    
     question_words = [
         "what", "why", "how", "when", "where", "who",
         "which", "can", "could", "would", "should",
-        "is", "are", "do", "does", "will"
+        "is", "are", "do", "does", "will",
     ]
-    
     first_word = text.lower().split()[0] if text.split() else ""
     return first_word in question_words
 
 
-def get_word_count_target(length_setting: str = "normal") -> int:
-    """
-    Get target word count based on length setting.
-    
-    Args:
-        length_setting: User's length preference
-    
-    Returns:
-        Target word count
-    """
-    return WORD_COUNT_TARGETS.get(length_setting, WORD_COUNT_TARGETS["normal"])
+def estimate_tokens(text: str) -> int:
+    """Rough token count estimate: chars / 4."""
+    return max(1, len(text) // CHARS_PER_TOKEN)
+
+
+def get_backend_info() -> str:
+    """Human-readable backend description for startup display."""
+    if USE_LOCAL_LLM:
+        return f"Local LLM @ {LOCAL_LLM_URL} (Pacify: {PACIFY_MODEL} | Defy: {DEFY_MODEL})"
+    return f"Groq Cloud (Pacify: {PACIFY_MODEL} | Defy: {DEFY_MODEL})"
 
 
 # ============================================================================
-# CONFIG SUMMARY (DEBUG)
+# VALIDATION
 # ============================================================================
+
+def validate_config() -> tuple:
+    errors = []
+
+    if not USE_LOCAL_LLM and not GROQ_API_KEY:
+        errors.append("GROQ_API_KEY not found and LOCAL_LLM is not enabled")
+
+    required_dirs = [DATA_DIR, LOGS_DIR, PERSONAS_DIR, EXPORTS_DIR]
+    for dir_path in required_dirs:
+        if not dir_path.exists():
+            errors.append(f"Required directory missing: {dir_path}")
+
+    for mode in ["pacify", "defy"]:
+        mode_dir = PERSONAS_DIR / mode
+        if not mode_dir.exists():
+            errors.append(f"Persona directory missing: {mode_dir}")
+
+    return (len(errors) == 0, errors)
+
 
 def get_config_summary() -> dict:
-    """Get configuration summary for debugging."""
     return {
-        "mode_default": DEFAULT_MODE,
-        "pacify_model": PACIFY_MODEL,
-        "defy_model": DEFY_MODEL,
-        "context_limit": DEFAULT_CONTEXT_LIMIT,
-        "token_guidelines": TOKEN_GUIDELINES,
-        "word_targets": WORD_COUNT_TARGETS,
-        "personas": {
-            "pacify": PACIFY_PERSONAS,
-            "defy": DEFY_PERSONAS,
-        },
-        "features": FEATURES,
-        "api_key_loaded": bool(GROQ_API_KEY),
+        "backend":         "local" if USE_LOCAL_LLM else "groq",
+        "backend_info":    get_backend_info(),
+        "pacify_model":    PACIFY_MODEL,
+        "defy_model":      DEFY_MODEL,
+        "persona_overrides": PERSONA_MODEL_OVERRIDES,
+        "context_limit":   DEFAULT_CONTEXT_LIMIT,
+        "token_limits":    TOKEN_LIMITS,
+        "word_targets":    WORD_COUNT_TARGETS,
+        "personas":        {"pacify": PACIFY_PERSONAS, "defy": DEFY_PERSONAS},
+        "features":        FEATURES,
+        "api_key_loaded":  bool(API_KEY),
         "paths": {
-            "data": str(DATA_DIR),
+            "data":    str(DATA_DIR),
             "exports": str(EXPORTS_DIR),
-            "logs": str(LOGS_DIR),
-        }
+            "logs":    str(LOGS_DIR),
+        },
     }
 
 

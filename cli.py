@@ -1,6 +1,6 @@
 """
-Pacify & Defy - CLI Interface v-1.0.0
-Clean, user-friendly terminal interface with enhanced UX
+Pacify & Defy - CLI Interface v-2.0.0
+Multi-user, local-LLM-ready terminal interface with enhanced UX
 """
 
 import sys
@@ -43,6 +43,8 @@ try:
         MODE_SWITCH_THRESHOLD_HIGH,
         GREETING_RANDOMNESS,
         COMMAND_HISTORY_SIZE,
+        get_backend_info,
+        USE_LOCAL_LLM,
         )
     
     # Brain import with factory
@@ -67,52 +69,56 @@ class CLI:
     Clean, user-friendly with enhanced error handling and auto-recommendations.
     """
     
-    def __init__(self):
-        """Initialize CLI with session persistence."""
+    def __init__(self, user_id: int = None):
+        """
+        Initialize CLI.
+        user_id: pass explicitly for multi-user, or None to use profile selection.
+        """
         self.memory = MemoryManager()
         self.running = True
         self.session_id = self._generate_session_id()
-        self.user_id = 1
-        
+
+        # Resolve user — use provided ID or default to 1
+        self.user_id = user_id if user_id is not None else 1
+
         # Display settings
         self.show_metadata = True
         self.show_timestamps = False
-        
+
         # Response tracking for copy command
         self.response_history = []
-        
+
         # Auto-switch tracking (avoid nagging)
         self.declined_switches = set()
-        
+
         # Load last session state or use defaults
         session_state = self.memory.load_session_state(self.user_id)
-        
+
         if session_state:
-            self.mode = session_state.get("last_mode", DEFAULT_MODE)
-            self.persona = session_state.get("last_persona", self._get_default_persona(self.mode))
-            self.current_mood = session_state.get("last_mood", DEFAULT_MOOD)
-            self.mode_switches = session_state.get("mode_switches", 0)
+            self.mode         = session_state.get("last_mode",    DEFAULT_MODE)
+            self.persona      = session_state.get("last_persona", self._get_default_persona(DEFAULT_MODE))
+            self.current_mood = session_state.get("last_mood",    DEFAULT_MOOD)
+            self.mode_switches = int(session_state.get("mode_switches", 0))
         else:
-            self.mode = DEFAULT_MODE
-            self.persona = DEFAULT_PACIFY_PERSONA
-            self.current_mood = DEFAULT_MOOD
+            self.mode          = DEFAULT_MODE
+            self.persona       = DEFAULT_PACIFY_PERSONA
+            self.current_mood  = DEFAULT_MOOD
             self.mode_switches = 0
-        
-        # Command history for terminal shortcuts
+
+        # Command history
         self.command_history = []
-        self.history_index = -1
-        
+        self.history_index   = -1
+
         # Defy mode confirmation tracking
         self.defy_confirmed = False
-        
+
         # Session tracking for farewell
         self.exchange_count = 0
-        
-# Initialize brain if available
+
+        # Initialize brain
         if BRAIN_AVAILABLE:
             self.brain = create_brain(self.mode, self.persona, self.user_id)
-    # Set mood for Pacificia
-            if self.persona == "pacificia" and hasattr(self.brain, 'set_mood'):
+            if self.persona == "pacificia" and hasattr(self.brain, "set_mood"):
                 try:
                     self.brain.set_mood(self.current_mood)
                 except Exception as e:
@@ -179,47 +185,44 @@ class CLI:
     def show_banner(self):
         """Display complete startup banner with contextual greeting."""
         console.clear()
-        
-        # Mode banner
+
+        # Mode + persona banners
         self._show_mode_banner()
-        
-        # Persona name
         self._show_persona_banner()
-        
-        # Contextual greeting with return visitor detection
-        last_session = self.memory.get_preference(self.user_id, "session_last_session_timestamp")
-        custom_greeting = GreetingGenerator.generate(last_session)
-        
-        if custom_greeting:
-            greeting = custom_greeting
-        else:
-            greeting = self._get_contextual_greeting()
+
+        # Contextual greeting
+        last_session = self.memory.load_session_state(self.user_id)
+        last_ts = last_session.get("last_session_timestamp") if last_session else None
+        custom_greeting = GreetingGenerator.generate(last_ts)
+        greeting = custom_greeting or self._get_contextual_greeting()
         console.print(f"\n{greeting}\n", style="dim italic")
-        
+
         # Status line
         mode_color = "cyan" if self.mode == "pacify" else "red"
+        user_name = self.memory.get_user_display_name(self.user_id)
         status = (
+            f"User: [white]{user_name}[/white] | "
             f"Mode: [{mode_color}]{self.mode.upper()}[/{mode_color}] | "
             f"Persona: [{mode_color}]{self.persona}[/{mode_color}]"
         )
-        
         if self.persona in MOOD_ENABLED_PERSONAS:
             status += f" | Mood: [yellow]{self.current_mood}[/yellow]"
-        
         console.print(status, style="dim")
-        
-        # Check for recent errors
+
+        # Backend info
+        backend_label = "[green]Local LLM[/green]" if USE_LOCAL_LLM else "[cyan]Groq Cloud[/cyan]"
+        console.print(f"[dim]Backend: {backend_label} — {get_backend_info()}[/dim]")
+
+        # Warnings
         recent_errors = self.memory.get_recent_errors(limit=1)
         if recent_errors and random.random() < 0.3:
             console.print("[dim]I see we had some technical difficulties last time...[/dim]")
-        
         if not BRAIN_AVAILABLE:
-            console.print("[yellow]Warning: brain.py not loaded - demo mode[/yellow]", style="dim")
-        
+            console.print("[yellow]Warning: brain.py not loaded — demo mode[/yellow]", style="dim")
         if not CLIPBOARD_AVAILABLE:
-            console.print("[dim]Note: pyperclip not installed - /copy command unavailable[/dim]")
-        
-        console.print("Type [yellow]/help[/yellow] for commands or start chatting\n", style="dim")
+            console.print("[dim]Note: pyperclip not installed — /copy unavailable[/dim]")
+
+        console.print("\nType [yellow]/help[/yellow] for commands or start chatting\n", style="dim")
     
     # ========================================================================
     # TERMINAL SHORTCUTS
@@ -293,38 +296,37 @@ class CLI:
         
         # Metadata footer (if enabled)
         if self.show_metadata:
-            time_str = f"{metadata.get('time', 0):.2f}s"
-            word_count = metadata.get('word_count', 0)
-            mood = metadata.get('mood', self.current_mood)
-            pattern = metadata.get('pattern', 'normal')
-            
+            latency_str = f"{metadata.get('time', 0):.2f}s"
+            word_count  = metadata.get('word_count', 0)
+            mood        = metadata.get('mood', self.current_mood)
+            pattern     = metadata.get('pattern', 'normal')
+            ctx_turns   = metadata.get('context_turns', 0)
+
             # Build metadata line
-            meta_parts = [f"Time: {time_str}", f"Words: {word_count}"]
-            
-            # Context indicator
-            if metadata.get('using_context'):
-                meta_parts.append("Using context")
-            
+            meta_parts = [f"Latency: {latency_str}", f"Words: {word_count}"]
+
+            # Context turns indicator
+            if ctx_turns > 0:
+                meta_parts.append(f"Context: {ctx_turns} turns")
+
             # Topic tracking
             if metadata.get('conversation_topic'):
-                topic = metadata['conversation_topic']
-                meta_parts.append(f"Topic: {topic}")
-            
-            # Pattern indicator (if not normal)
-            if pattern not in ["normal", "follow_up"]:
+                meta_parts.append(f"Topic: {metadata['conversation_topic']}")
+
+            # Pattern (skip normal/follow_up)
+            if pattern not in ('normal', 'follow_up'):
                 meta_parts.append(f"Pattern: {pattern}")
-            
+
             if self.persona in MOOD_ENABLED_PERSONAS:
                 meta_parts.append(f"Mood: {mood}")
-            
+
+            # FIXED: was "Time:" — now clearly labelled "Clock:" to avoid collision with Latency
             if self.show_timestamps:
-                timestamp = datetime.now().strftime("%H:%M:%S")
-                meta_parts.append(f"Time: {timestamp}")
-            
-            # Word count warning
+                meta_parts.append(f"Clock: {datetime.now().strftime('%H:%M:%S')}")
+
             if metadata.get('word_warning'):
                 meta_parts.append(f"Note: {metadata['word_warning']}")
-            
+
             console.print(f"[dim]{' | '.join(meta_parts)}[/dim]\n")
         else:
             console.print()
@@ -506,35 +508,39 @@ class CLI:
     def copy_to_clipboard(self, index: Optional[int] = None):
         """
         Copy AI response to clipboard.
-        
-        Args:
-            index: Response index (None = last response)
+        Index: 1 = most recent, 2 = second-most-recent, etc.
+        /copy   → copies last response
+        /copy 2 → copies the response before last
         """
         if not CLIPBOARD_AVAILABLE:
-            console.print("[yellow]Copy command unavailable - install pyperclip:[/yellow]")
+            console.print("[yellow]Copy command unavailable — install pyperclip:[/yellow]")
             console.print("[dim]pip install pyperclip[/dim]\n")
             return
-        
+
         if not self.response_history:
             console.print("[yellow]No responses to copy yet.[/yellow]\n")
             return
-        
+
         try:
             if index is None:
-                # Copy last response
                 text_to_copy = self.response_history[-1]
                 console.print("[green]Copied last response to clipboard.[/green]\n")
             else:
-                # Copy specific response
                 if 1 <= index <= len(self.response_history):
+                    # index 1 = last, 2 = second-to-last (consistent with /history)
                     text_to_copy = self.response_history[-index]
-                    console.print(f"[green]Copied response #{index} to clipboard.[/green]\n")
+                    label = "last" if index == 1 else f"{index} responses ago"
+                    console.print(f"[green]Copied response ({label}) to clipboard.[/green]\n")
                 else:
-                    console.print(f"[yellow]Invalid index. Available: 1-{len(self.response_history)}[/yellow]\n")
+                    console.print(
+                        f"[yellow]Index out of range. This session has "
+                        f"{len(self.response_history)} response(s). "
+                        f"Use /copy 1 for the latest.[/yellow]\n"
+                    )
                     return
-            
+
             pyperclip.copy(text_to_copy)
-        
+
         except Exception as e:
             console.print(f"[red]Clipboard error: {str(e)}[/red]\n")
     
@@ -651,15 +657,81 @@ class CLI:
         console.print(f"[green]Mood set to '{mood}'[/green]\n")
     
     # ========================================================================
+    # USER PROFILES (MULTI-USER)
+    # ========================================================================
+
+    def handle_profile_command(self, arg: str = None):
+        """Handle /profile [name] command."""
+        if not arg:
+            # Show all profiles
+            users = self.memory.list_users()
+            if not users:
+                console.print("[yellow]No profiles found.[/yellow]\n")
+                return
+
+            console.print("[bold cyan]User Profiles:[/bold cyan]\n")
+            for u in users:
+                active_marker = " [green]← active[/green]" if u["id"] == self.user_id else ""
+                last_seen = u["last_seen"][:10] if u["last_seen"] else "never"
+                console.print(
+                    f"  [white]{u['username']}[/white] "
+                    f"[dim]| {u['conversation_count']} conversations | last seen: {last_seen}[/dim]"
+                    f"{active_marker}"
+                )
+            console.print()
+            console.print("[dim]Use /profile <name> to switch profiles[/dim]\n")
+            return
+
+        # Switch to named profile
+        username = arg.strip().lower()
+        if username == "default":
+            new_user_id = 1
+        else:
+            new_user_id = self.memory.get_or_create_user(username, username.capitalize())
+
+        if new_user_id == self.user_id:
+            name = self.memory.get_user_display_name(self.user_id)
+            console.print(f"[yellow]Already logged in as '{name}'[/yellow]\n")
+            return
+
+        # Switch user + reload session state
+        self._save_session_state()
+        self.user_id = new_user_id
+        display = self.memory.get_user_display_name(new_user_id)
+
+        session = self.memory.load_session_state(new_user_id)
+        if session:
+            self.mode         = session.get("last_mode", "pacify")
+            self.persona      = session.get("last_persona", "pacificia")
+            self.current_mood = session.get("last_mood", "witty")
+            self.mode_switches = int(session.get("mode_switches", 0))
+        else:
+            self.mode          = "pacify"
+            self.persona       = "pacificia"
+            self.current_mood  = "witty"
+            self.mode_switches = 0
+
+        # Reload brain for new user
+        if BRAIN_AVAILABLE:
+            self.brain = create_brain(self.mode, self.persona, self.user_id)
+            if self.persona == "pacificia" and hasattr(self.brain, "set_mood"):
+                try:
+                    self.brain.set_mood(self.current_mood)
+                except Exception:
+                    pass
+
+        console.print(f"[green]Switched to profile: {display} (id: {new_user_id})[/green]\n")
+
+    # ========================================================================
     # SESSION STATE
     # ========================================================================
-    
+
     def _save_session_state(self):
-        """Save current session state."""
+        """Save current session state to dedicated session_state table."""
         state = {
-            "last_mode": self.mode,
-            "last_persona": self.persona,
-            "last_mood": self.current_mood,
+            "last_mode":     self.mode,
+            "last_persona":  self.persona,
+            "last_mood":     self.current_mood,
             "mode_switches": self.mode_switches,
         }
         self.memory.save_session_state(self.user_id, state)
@@ -667,16 +739,18 @@ class CLI:
     def show_status(self):
         """Display current configuration."""
         mode_color = "cyan" if self.mode == "pacify" else "red"
-        
+        user_name = self.memory.get_user_display_name(self.user_id)
+
         status = f"""
 [bold cyan]Current Configuration:[/bold cyan]
 
+User:           [white]{user_name}[/white] [dim](id: {self.user_id})[/dim]
 Mode:           [{mode_color}]{self.mode.upper()}[/{mode_color}]
 Persona:        [{mode_color}]{self.persona}[/{mode_color}]"""
-        
+
         if self.persona in MOOD_ENABLED_PERSONAS:
             status += f"\nMood:           [yellow]{self.current_mood}[/yellow]"
-        
+
         status += f"""
 Session ID:     [dim]{self.session_id}[/dim]
 Mode Switches:  [dim]{self.mode_switches}[/dim]
@@ -685,11 +759,10 @@ Timestamps:     [green]{'ON' if self.show_timestamps else 'OFF'}[/green]
 Brain Status:   [{'green' if BRAIN_AVAILABLE else 'yellow'}]{'Loaded' if BRAIN_AVAILABLE else 'Not Available'}[/{'green' if BRAIN_AVAILABLE else 'yellow'}]
 Clipboard:      [{'green' if CLIPBOARD_AVAILABLE else 'yellow'}]{'Available' if CLIPBOARD_AVAILABLE else 'Not Available'}[/{'green' if CLIPBOARD_AVAILABLE else 'yellow'}]
 
-[bold cyan]Models:[/bold cyan]
-Pacify Model:   [cyan]{PACIFY_MODEL}[/cyan]
-Defy Model:     [red]{DEFY_MODEL}[/red]
+[bold cyan]Backend:[/bold cyan]
+{'Local LLM' if USE_LOCAL_LLM else 'Groq Cloud'}: [cyan]{get_backend_info()}[/cyan]
         """
-        
+
         console.print(Panel(status, border_style=mode_color, padding=(1, 2)))
         console.print()
     
@@ -710,23 +783,28 @@ Defy Model:     [red]{DEFY_MODEL}[/red]
     def show_help(self):
         """Display clean, scannable help menu."""
         help_text = """
-[bold cyan]PACIFY & DEFY - COMMAND REFERENCE[/bold cyan]
+[bold cyan]PACIFY & DEFY v2 - COMMAND REFERENCE[/bold cyan]
 
 [bold yellow]CORE COMMANDS[/bold yellow]
   /help                    Show this help menu
-  /status                  Show current configuration
+  /status                  Show current configuration & backend
   /stats                   Conversation statistics
   /clear                   Clear session memory
-  
+
 [bold yellow]MODE & PERSONALITY[/bold yellow]
   /setmode <pacify|defy>   Switch AI mode
   /persona <name>          Change persona (pacificia, sage, void, rebel)
   /mood <mood>             Set mood (Pacificia only)
 
+[bold yellow]USERS & PROFILES[/bold yellow]
+  /profile                 Show all profiles & switch user
+  /profile <name>          Switch to named profile (creates if new)
+
 [bold yellow]HISTORY & DATA[/bold yellow]
   /history [N]             Show last N conversations (default: 5)
   /search <keyword>        Search conversation history
-  /copy [N]                Copy last (or Nth) response to clipboard
+  /copy                    Copy last response to clipboard
+  /copy <N>                Copy Nth-most-recent response (1=last, 2=before that)
   /export [file.ext]       Save conversation (txt, json, md)
   /opinions                View tracked opinions
 
@@ -739,8 +817,9 @@ Defy Model:     [red]{DEFY_MODEL}[/red]
   !!                       Repeat last command
   exit, quit               End session
 
-[dim]Tip: Type /settings to see all configurable options[/dim]
-[dim]Tip: The AI suggests better persona/mode for your task[/dim]
+[dim]Tip: /set length quick|normal|detailed controls response length[/dim]
+[dim]Tip: The AI suggests better persona/mode for your task automatically[/dim]
+[dim]Tip: Set LOCAL_LLM=true in .env to use Ollama or LM Studio[/dim]
 """
         console.print(help_text)
         console.print()
@@ -1060,18 +1139,21 @@ Defy Model:     [red]{DEFY_MODEL}[/red]
                 console.print("[red]Usage: /setmode <pacify|defy>[/red]\n")
             else:
                 self.switch_mode(arg)
-        
+
         elif command == "persona":
             if not arg:
                 console.print("[red]Usage: /persona <name>[/red]\n")
             else:
                 self.switch_persona(arg)
-        
+
         elif command == "mood":
             if not arg:
                 console.print(f"[cyan]Available moods: {', '.join(AVAILABLE_MOODS)}[/cyan]\n")
             else:
                 self.set_mood(arg)
+
+        elif command == "profile":
+            self.handle_profile_command(arg)
         
         # History & Data
         elif command == "history":
@@ -1093,11 +1175,11 @@ Defy Model:     [red]{DEFY_MODEL}[/red]
         
         elif command == "opinions":
             self.show_opinions()
-        
+
         else:
             console.print(f"[red]Unknown command: /{command}[/red]")
             console.print("[dim]Type /help for available commands[/dim]\n")
-        
+
         return True
     
     # ========================================================================
