@@ -1,148 +1,158 @@
+---
+title: Pacify & Defy
+---
+
 # Pacify & Defy
 
-```
-    ____             _ ____         ___     ____       ____       
-   / __ \____ ______(_) __/_  __   ( _ )   / __ \___  / __/_  __
-  / /_/ / __ `/ ___/ / /_/ / / /  / __ \/\/ / / / _ \/ /_/ / / /
- / ____/ /_/ / /__/ / __/ /_/ /  / /_/  \/ /_/ /  __/ __/ /_/ / 
-/_/    \__,_/\___/_/_/  \__, /   \___/\_/_____/\___/_/  \__, /  
-                       /____/                          /____/    
-```
+<div align="center">
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Groq API](https://img.shields.io/badge/Powered%20by-Groq-orange)](https://groq.com)
+<!-- ────────────────────────────────
+     HERO (animated, no ASCII)
+     Swap to your own GIF later (guide below)
+     ──────────────────────────────── -->
 
-A dual-mode conversational AI system with persistent memory, context awareness, and dynamic personality adaptation.
+<!-- Option A (now): animated typing SVG (no assets required) -->
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=46&pause=900&color=F59E0B&center=true&vCenter=true&width=980&lines=Pacify+%26+Defy;Two+modes.+Four+personas.;Persistent+memory.+Context+aware.;CLI+assistant+with+teeth." alt="Pacify & Defy Typing" />
+
+<br/>
+
+<strong>collaborate gently • or get the truth raw</strong>
+
+<br/><br/>
+
+<!-- Option B (later): replace with your own animated title -->
+<!-- <img src="assets/pacify-defy-title.gif" alt="Pacify & Defy Animated Title" width="70%" /> -->
+
+<img src="assets/banner.gif" alt="Pacify & Defy Banner" width="100%" />
+
+<br/><br/>
+
+<a href="https://github.com/LoneMagma/Pacify-DefyAI">
+  <img src="https://img.shields.io/badge/repo-LoneMagma%2FPacify--DefyAI-111827?style=for-the-badge&labelColor=000000" />
+</a>
+<a href="https://github.com/LoneMagma/Pacify-DefyAI">
+  <img src="https://img.shields.io/badge/status-active%20development-f59e0b?style=for-the-badge&labelColor=000000" />
+</a>
+<a href="https://www.python.org/downloads/">
+  <img src="https://img.shields.io/badge/Python-3.8%2B-3776ab?style=for-the-badge&logo=python&logoColor=white&labelColor=000000" />
+</a>
+<a href="https://groq.com">
+  <img src="https://img.shields.io/badge/Powered%20by-Groq-f97316?style=for-the-badge&labelColor=000000" />
+</a>
+<a href="LICENSE">
+  <img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge&labelColor=000000" />
+</a>
+
+<br/><br/>
+
+> *A dual‑mode CLI AI with persistent memory, context awareness, and personality adaptation.*
+
+<p>
+  <a href="#what-is-this">What is this</a> •
+  <a href="#modes--personas">Modes</a> •
+  <a href="#quick-start">Quick start</a> •
+  <a href="#commands">Commands</a> •
+  <a href="#features">Features</a> •
+  <a href="#project-structure">Structure</a> •
+  <a href="#troubleshooting">Troubleshooting</a>
+</p>
+
+</div>
 
 ---
 
-## Overview
+## What is this
 
-Pacify & Defy is a sophisticated CLI-based AI assistant that operates in two distinct modes, each with specialized personas designed for different interaction styles. The system maintains conversation history, learns user preferences, and provides contextually aware responses through the Groq API.
+**Pacify & Defy** is a CLI-based conversational system with **two modes** and **four personas**.
+It remembers what matters (SQLite persistence), adapts your preferences, and responds with the kind of tone you picked:
+soft guidance… or blunt truth.
 
-### Modes & Personas
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-**Pacify Mode**  
-*Collaborative, structured assistance*
-
-- **Pacificia** — Conversational companion with mood-based adaptation
-- **Sage** — Task-oriented guide for technical implementation
-
-</td>
-<td width="50%" valign="top">
-
-**Defy Mode**  
-*Unfiltered, direct responses*
-
-- **Void** — Brutally honest conversational partner
-- **Rebel** — Technical specialist without content restrictions
-
-</td>
-</tr>
-</table>
+It runs on the **Groq API** (free tier works), stays lightweight, and is designed to feel like a *tool*, not a toy.
 
 ---
 
-## Quick Start
+## Modes & personas
 
-## Quick Installation
+<div align="center">
 
-### Linux / Mac / WSL
+| Mode | Vibe | Personas |
+|---|---|---|
+| **Pacify** | collaborative, structured | **Pacificia** (mood-adaptive) · **Sage** (implementation guide) |
+| **Defy** | direct, unfiltered | **Void** (brutally honest) · **Rebel** (technical specialist) |
 
+</div>
+
+<details>
+<summary><b>Persona cheat-sheet (click)</b></summary>
+
+- **Pacificia**: emotionally adaptive, supportive, remembers preferences, can be witty/poetic.
+- **Sage**: step-by-step implementation, less fluff, more structure.
+- **Void**: no sugar coating, short brutal clarity (still helpful).
+- **Rebel**: technical answers with minimal guardrails (you asked for it).
+
+</details>
+
+---
+
+## Quick start
+
+### Get the repo
 ```bash
-git clone https://github.com/LoneMagma/Pacify-DefyAI.git && cd Pacify-DefyAI && chmod +x setup.sh && ./setup.sh
+git clone https://github.com/LoneMagma/Pacify-DefyAI.git
+cd Pacify-DefyAI
 ```
 
-### Windows (Command Prompt)
-
-```cmd
-git clone https://github.com/LoneMagma/Pacify-DefyAI.git && cd Pacify-DefyAI && setup.ps1
-```
-
-### Windows (PowerShell)
-
-```powershell
-git clone https://github.com/LoneMagma/Pacify-DefyAI.git; cd Pacify-DefyAI; .\setup.ps1
-```
-
-**Note**: You'll need a free Groq API key from [console.groq.com/keys](https://console.groq.com/keys)
-
-
-### Installation
-
+### Install (Linux / macOS / WSL)
 ```bash
-# Clone repository
-git clone <repository-url>
-cd Pacify_DefyAI
-
-# Run setup script
 chmod +x setup.sh
 ./setup.sh
-
-# Or install manually
-pip install -r requirements.txt
 ```
 
-### Configuration
+### Install (Windows PowerShell)
+```powershell
+.\setup.ps1
+```
+
+### Set your Groq key
+Get a free key from Groq console:
+- https://console.groq.com/keys
 
 ```bash
-# Copy environment template
 cp .env.example .env
-
-# Add your Groq API key
-echo "GROQ_API_KEY=your_api_key_here" > .env
 ```
 
-Get your API key at [console.groq.com](https://console.groq.com)
+Edit `.env`:
+```env
+GROQ_API_KEY=your_api_key_here
+```
 
 ### Launch
-
 ```bash
 python cli.py
 ```
 
 ---
 
-## Core Features
+## Commands
 
-- **Persistent Memory** — SQLite-backed conversation history with user isolation
-- **Context Awareness** — Tracks topics, detects follow-ups, maintains conversation flow
-- **Preference Learning** — Automatically adapts to user communication styles
-- **Mood System** — Dynamic emotional tone adjustment (Pacificia persona)
-- **Code Intelligence** — Automatic code block detection and formatting
-- **Session Management** — Saves state across sessions with contextual greetings
-- **Export Capabilities** — Conversation export in TXT, JSON, and Markdown formats
-
----
-
-## Usage
-
-### Essential Commands
-
+### Essentials
 ```bash
-/help              # Display command reference
-/status            # Show current configuration
-/stats             # View conversation statistics
-/history [N]       # Show recent conversations
-/export [file]     # Save conversation history
+/help              # Command reference
+/status            # Current configuration
+/stats             # Conversation statistics
+/history [N]       # Recent conversations
+/export [file]     # Export conversation history
 ```
 
-### Mode & Persona Control
-
+### Mode & persona control
 ```bash
-/setmode pacify    # Switch to Pacify mode
-/setmode defy      # Switch to Defy mode
-/persona sage      # Change persona
-/mood witty        # Set mood (Pacificia only)
+/setmode pacify    # Switch to Pacify
+/setmode defy      # Switch to Defy
+/persona sage      # Switch persona
+/mood witty        # Pacificia mood (only)
 ```
 
-### Configuration
-
+### Settings
 ```bash
 /set length quick|normal|detailed    # Response length
 /set context 1-10                    # Context window size
@@ -151,8 +161,7 @@ python cli.py
 /set autosave on|off                # Auto-save on exit
 ```
 
-### Data Management
-
+### Data management
 ```bash
 /search <keyword>  # Search conversation history
 /opinions          # View tracked opinions
@@ -162,10 +171,52 @@ python cli.py
 
 ---
 
-## Project Structure
+## Features
 
+- **Persistent memory** — SQLite conversation history with user isolation
+- **Context awareness** — topic tracking, follow-up detection, conversation flow
+- **Preference learning** — adapts to your style automatically
+- **Mood system** — Pacificia adjusts tone dynamically
+- **Code intelligence** — detects/format code blocks automatically
+- **Session management** — state saved across sessions with contextual greetings
+- **Exports** — TXT / JSON / Markdown
+
+<details>
+<summary><b>Export formats (examples)</b></summary>
+
+**TXT**
+```text
+Pacify & Defy - Conversation Export
+Mode: pacify | Persona: sage
+============================================================
+[1] 2026-01-20T10:30:00
+You: How do I implement a binary search tree?
+sage: [response...]
 ```
-Pacify_DefyAI/
+
+**JSON**
+```json
+{
+  "mode": "pacify",
+  "persona": "sage",
+  "export_date": "2026-01-20T10:30:00",
+  "conversations": [
+    {
+      "timestamp": "2026-01-20T10:30:00",
+      "user": "How do I implement a binary search tree?",
+      "ai": "[response content]"
+    }
+  ]
+}
+```
+
+</details>
+
+---
+
+## Project structure
+```text
+Pacify-DefyAI/
 ├── cli.py                 # Terminal interface
 ├── core/
 │   ├── brain.py          # AI logic and API integration
@@ -191,107 +242,21 @@ Pacify_DefyAI/
 
 ---
 
-## Advanced Features
+## Technical details
 
-### Mood System
-
-Available for Pacificia persona:
-
-`witty` · `sarcastic` · `philosophical` · `empathetic` · `cheeky` · `poetic` · `inspired` · `melancholic`
-
-```bash
-/mood philosophical
-```
-
-### Auto-Switching Recommendations
-
-The system intelligently suggests persona/mode switches:
-
-- Code implementation needed → Sage/Rebel
-- Deep explanations requested → Pacificia/Void
-- Unfiltered content implied → Defy mode
-- Collaborative guidance needed → Pacify mode
-
-### Export Formats
-
-<details>
-<summary><b>Text Format (.txt)</b></summary>
-
-```
-Pacify & Defy - Conversation Export
-Mode: pacify | Persona: sage
-============================================================
-
-[1] 2024-01-20T10:30:00
-Mode: pacify | Persona: sage
-You: How do I implement a binary search tree?
-sage: [response content]
-------------------------------------------------------------
-```
-</details>
-
-<details>
-<summary><b>JSON Format (.json)</b></summary>
-
-```json
-{
-  "mode": "pacify",
-  "persona": "sage",
-  "export_date": "2024-01-20T10:30:00",
-  "conversations": [
-    {
-      "timestamp": "2024-01-20T10:30:00",
-      "user": "How do I implement a binary search tree?",
-      "ai": "[response content]",
-      "mood": "focused",
-      "word_count": 150
-    }
-  ]
-}
-```
-</details>
-
-<details>
-<summary><b>Markdown Format (.md)</b></summary>
-
-```markdown
-# Pacify & Defy - Conversation Export
-
-**Mode:** pacify | **Persona:** sage
-
----
-
-## [1] 2024-01-20T10:30:00
-
-**Mode:** pacify | **Persona:** sage
-
-**You:** How do I implement a binary search tree?
-
-**sage:** [response content]
-
----
-```
-</details>
-
----
-
-## Technical Details
-
-### Memory System
+### Memory system
 
 SQLite-backed persistence with complete user data isolation:
 
 | Table | Purpose |
-|-------|---------|
-| `conversations` | Full exchange history with metadata |
-| `opinions` | Tracked user viewpoints with confidence scoring |
-| `preferences` | Manual and learned user preferences |
-| `emotional_tracking` | Sentiment analysis over time |
-| `session_state` | Persistent configuration across restarts |
+|---|---|
+| `conversations` | Exchange history + metadata |
+| `opinions` | Tracked viewpoints + confidence |
+| `preferences` | Learned + manual preferences |
+| `emotional_tracking` | Sentiment signals over time |
+| `session_state` | Persistent config across restarts |
 
-### Context Awareness
-
-The conversation tracker maintains:
+### Context awareness tracks
 
 - Current topic identification
 - Follow-up detection
@@ -299,122 +264,89 @@ The conversation tracker maintains:
 - Topic shift signals
 - Code language persistence
 
-### Token Allocation
+### Token allocation
 
-| Context | Tokens | Use Case |
-|---------|--------|----------|
-| Quick | 80 | Short answers (1-2 sentences) |
-| Normal | 150 | Standard conversation (2-4 sentences) |
-| Detailed | 250 | In-depth responses (4-6 sentences) |
-| Technical | 600 | Code examples and explanations |
+| Context | Tokens | Use case |
+|---|---:|---|
+| Quick | 80 | 1–2 sentences |
+| Normal | 150 | 2–4 sentences |
+| Detailed | 250 | 4–6 sentences |
+| Technical | 600 | Code examples + breakdowns |
 
-### API Configuration
+### API configuration
 
 - **Model:** `llama-3.3-70b-versatile`
-- **Rate Limit:** 30 requests/minute
-- **Timeout:** 30 seconds
-- **Retry Attempts:** 2
+- **Rate limit:** ~30 req/min (provider-side; varies)
+- **Timeout:** 30s
+- **Retry attempts:** 2
 
 ---
 
 ## Troubleshooting
 
 <details>
-<summary><b>API Key Issues</b></summary>
+<summary><b>GROQ_API_KEY not found</b></summary>
 
-**Error:** `GROQ_API_KEY not found`
-
-- Ensure `.env` file exists in project root
-- Verify API key is properly set without quotes
-- Check for extra spaces or newlines
+- Ensure `.env` exists in the project root
+- Verify key format (no quotes, no trailing spaces)
 
 ```bash
-# Correct format
 GROQ_API_KEY=gsk_your_actual_key_here
 ```
 </details>
 
 <details>
-<summary><b>Rate Limit Errors</b></summary>
+<summary><b>Rate limit exceeded</b></summary>
 
-**Error:** `Rate limit exceeded`
-
-- Wait 60 seconds between large request batches
-- Consider adding additional API keys in `core/api_pool.py`
-- Check your Groq console for quota status
+- Wait ~60 seconds between big batches
+- Add additional keys in `core/api_pool.py`
+- Check quota on Groq console
 
 </details>
 
 <details>
-<summary><b>Empty or Invalid Responses</b></summary>
+<summary><b>Empty / invalid responses</b></summary>
 
 - Check internet connection
-- Verify API key validity at [console.groq.com](https://console.groq.com)
+- Validate key at Groq console
 - Review logs in `logs/pacify_defy.log`
-- Enable debug mode: `DEBUG_MODE=true python cli.py`
+- Enable debug: `DEBUG_MODE=true python cli.py`
 
 </details>
 
 <details>
-<summary><b>Persona File Not Found</b></summary>
+<summary><b>Persona file not found</b></summary>
 
-- Ensure `personas/` directory structure is intact
-- Verify JSON files exist for all personas
-- Re-run setup script: `./setup.sh`
+- Ensure `personas/` directory structure exists
+- Verify all JSON files are present
+- Re-run setup: `./setup.sh` or `.\setup.ps1`
 
 </details>
-
----
-
-## Environment Variables
-
-```bash
-# Required
-GROQ_API_KEY=your_api_key_here
-
-# Optional
-DEBUG_MODE=false          # Enable verbose logging
-```
-
----
-
-## Performance Considerations
-
-- **Context Window:** Higher limits (8-10) increase token usage
-- **Response Length:** "Detailed" setting uses ~2x tokens of "normal"
-- **History Size:** Default 20 exchanges (~2-4k tokens for context)
-- **Rate Limiting:** Built-in throttling prevents API quota exhaustion
 
 ---
 
 ## Documentation
 
-- [CHANGELOG.md](CHANGELOG.md) — Version history and updates
-- [docs/](docs/) — Extended guides and API documentation
-- [LICENSE](LICENSE) — MIT License
+- `CHANGELOG.md` — Version history
+- `docs/` — Extended guides
+- `LICENSE` — MIT License
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Please ensure:
+PRs welcome. Please keep:
 
-- Code follows existing architecture patterns
-- Persona modifications update corresponding JSON files
-- New features include appropriate error handling
-- Changes maintain user data isolation in memory system
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- Existing architecture patterns
+- Persona JSON files in sync with behavior
+- Error handling (especially around API calls)
+- User data isolation intact
 
 ---
 
 ## Acknowledgments
 
-Built with [Groq's LLaMA 3.3 70B](https://groq.com) · Terminal UI by [Rich](https://rich.readthedocs.io/) · This Project was Vibecoded, Read credits.md.
+Built with Groq’s LLaMA 3.3 70B · Terminal UI by Rich · vibecoded (credits in `credits.md`)
 
 ---
 
@@ -422,6 +354,36 @@ Built with [Groq's LLaMA 3.3 70B](https://groq.com) · Terminal UI by [Rich](htt
 
 **Version 1.0.0** · *Last Updated: January 2026*
 
-[Report Bug](../../issues) · [Request Feature](../../issues) · [Documentation](docs/)
+<a href="https://github.com/LoneMagma/Pacify-DefyAI/issues">Report Bug</a> ·
+<a href="https://github.com/LoneMagma/Pacify-DefyAI/issues">Request Feature</a> ·
+<a href="docs/">Documentation</a>
+
+<br/><br/>
+
+built by <a href="https://github.com/LoneMagma">LoneMagma</a> • choose peace or chaos.
 
 </div>
+
+---
+
+## How to add your own animated hero later (GIF)
+
+1) Create an `assets/` folder in the repo root (if it doesn’t exist):
+```bash
+mkdir assets
+```
+
+2) Drop your files:
+- `assets/pacify-defy-title.gif` (logo/title animation)
+- `assets/banner.gif` (wide banner vibe strip)
+
+3) At the top of this README:
+- Uncomment the “Option B” `<img src="assets/pacify-defy-title.gif" .../>`
+- Optionally remove the typing SVG line
+
+4) Keep files GitHub-friendly:
+- Aim for **< 5–8 MB** per GIF
+- Title width ~**900–1200px**
+- Banner width ~**1200–1600px**
+
+That’s it — commit + push, and GitHub will render them automatically.
